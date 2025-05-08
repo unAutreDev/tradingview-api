@@ -1,14 +1,12 @@
 {
   "name": "tradingview-api",
-  "type": "module",
   "version": "1.0.0",
+  "type": "module",
   "main": "api-server.js",
   "scripts": {
-    "start": "node api-server.js",
-    "postinstall": "node install-chrome.js"
+    "start": "node api-server.js"
   },
   "dependencies": {
-    "@puppeteer/browsers": "^2.10.4",
     "express": "^4.18.2",
     "puppeteer": "^22.8.2"
   }
