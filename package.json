@@ -1,5 +1,6 @@
 {
   "name": "tradingview-api",
+  "type": "module",
   "version": "1.0.0",
   "main": "api-server.js",
   "scripts": {
