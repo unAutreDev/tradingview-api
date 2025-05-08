@@ -10,7 +10,7 @@ const cacheDir = '/opt/render/.cache/puppeteer';
 
     await install({
       browser: 'chrome',
-      buildId: 'stable',
+      buildId: '118.0.5993.70',
       cacheDir
     });
 
