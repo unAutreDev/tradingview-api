@@ -1,54 +1,59 @@
 import express from 'express';
 import puppeteer from 'puppeteer-core';
-import { computeExecutablePath } from '@puppeteer/browsers';
 import { existsSync } from 'fs';
 import { execSync } from 'child_process';
-
-const cacheDir = '/opt/render/.cache/puppeteer';
-const buildId = '136.0.7103.92';
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 const API_KEY = process.env.API_KEY;
 
-// Endpoint de diagnostic pour vérifier l'état de Chrome
-app.get('/check-chrome', (req, res) => {
+// Fonction pour trouver le chemin de Chromium
+function findChromiumPath() {
+  const possiblePaths = [
+    '/usr/bin/chromium-browser',
+    '/usr/bin/chromium',
+    '/snap/bin/chromium',
+    '/opt/chromium/chrome'
+  ];
+  
+  for (const path of possiblePaths) {
+    if (existsSync(path)) {
+      return path;
+    }
+  }
+  
+  // Essayer de trouver avec which
   try {
-    const executablePath = computeExecutablePath({
-      browser: 'chrome',
-      buildId: buildId,
-      cacheDir
-    });
+    return execSync('which chromium-browser || which chromium').toString().trim();
+  } catch (e) {
+    console.error('Chromium non trouvé:', e.message);
+    return null;
+  }
+}
+
+app.get('/check-browser', (req, res) => {
+  try {
+    const chromiumPath = findChromiumPath();
     
-    const exists = existsSync(executablePath);
-    
-    let details = {
-      executablePath,
-      exists,
-      debugInfo: {}
-    };
-    
-    if (exists) {
-      try {
-        // Vérifier les permissions
-        const permissions = execSync(`ls -la ${executablePath}`).toString();
-        details.debugInfo.permissions = permissions;
-        
-        // Vérifier les dépendances
-        const deps = execSync(`ldd ${executablePath}`).toString();
-        details.debugInfo.dependencies = deps;
-      } catch (e) {
-        details.debugInfo.error = e.message;
-      }
+    if (!chromiumPath) {
+      return res.status(404).json({ error: 'Chromium non trouvé' });
     }
     
-    res.json(details);
+    const info = {
+      path: chromiumPath,
+      exists: existsSync(chromiumPath)
+    };
+    
+    try {
+      info.version = execSync(`${chromiumPath} --version`).toString().trim();
+    } catch (e) {
+      info.versionError = e.message;
+    }
+    
+    res.json(info);
   } catch (err) {
-    res.status(500).json({
-      error: err.message,
-      stack: err.stack
-    });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -63,68 +68,106 @@ app.get('/screenshot', async (req, res) => {
   try {
     console.log('📋 Début de la capture d\'écran');
     
-    const executablePath = computeExecutablePath({
-      browser: 'chrome',
-      buildId: buildId,
-      cacheDir
-    });
-    
-    console.log(`🔍 Chrome path calculé: ${executablePath}`);
-    
-    if (!existsSync(executablePath)) {
-      console.error(`❌ Chrome non trouvé à ${executablePath}`);
-      return res.status(500).json({ 
-        error: 'Chrome non trouvé', 
-        path: executablePath,
-        suggestion: 'Vérifiez l\'installation avec /check-chrome'
-      });
+    const chromiumPath = findChromiumPath();
+    if (!chromiumPath) {
+      return res.status(500).json({ error: 'Chromium non trouvé sur le système' });
     }
     
-    console.log('🚀 Lancement du navigateur');
+    console.log(`🚀 Lancement de Chromium depuis: ${chromiumPath}`);
     const browser = await puppeteer.launch({
       headless: 'new',
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',  // Important sur Render
+        '--disable-dev-shm-usage',  // Crucial pour les environnements à faible mémoire
         '--disable-gpu',
         '--disable-software-rasterizer',
         '--disable-extensions',
-        '--single-process'          // Peut aider sur certains environnements
+        '--single-process',         // Peut aider pour les environnements à faible mémoire
+        '--no-zygote',
+        '--mute-audio',
+        '--ignore-certificate-errors',
+        '--disable-accelerated-2d-canvas',
+        '--disable-web-security',
+        '--disable-features=TranslateUI,BlinkGenPropertyTrees',
+        '--disable-notifications',
+        '--disable-infobars',
+        '--window-size=1280,800',
+        '--js-flags="--max-old-space-size=256"' // Limite l'utilisation de la mémoire JS
       ],
-      executablePath,
-      ignoreDefaultArgs: ['--disable-extensions']  // Éviter les conflits
+      executablePath: chromiumPath
     });
 
-    console.log('📄 Création d\'une nouvelle page');
+    console.log('📄 Création d\'une nouvelle page avec optimisations mémoire');
     const page = await browser.newPage();
+    
+    // Optimisations pour réduire l'utilisation de la mémoire
+    await page.setRequestInterception(true);
+    page.on('request', (request) => {
+      // Bloquer les ressources non essentielles pour économiser de la mémoire
+      const resourceType = request.resourceType();
+      if (['image', 'font', 'media'].includes(resourceType)) {
+        request.abort();
+      } else {
+        request.continue();
+      }
+    });
+    
+    // Limiter la résolution pour économiser de la mémoire
+    await page.setViewport({ width: 1024, height: 768, deviceScaleFactor: 1 });
     
     const url = `https://www.tradingview.com/chart/?symbol=COINBASE:${symbol}`;
     console.log(`🌐 Navigation vers: ${url}`);
     
-    await page.goto(url, { 
-      waitUntil: 'networkidle2',
-      timeout: 60000  // Augmenter le timeout à 60s
-    });
+    try {
+      await page.goto(url, { 
+        waitUntil: 'networkidle2',
+        timeout: 60000  // 60s timeout
+      });
+    } catch (navErr) {
+      console.warn(`⚠️ Navigation partielle: ${navErr.message}`);
+      // Continuer même si la navigation n'est pas complètement terminée
+    }
     
     console.log('⏳ Attente de 5 secondes');
     await new Promise(resolve => setTimeout(resolve, 5000));
+    
+    // Avant la capture, nettoyer la mémoire
+    try {
+      await page.evaluate(() => {
+        if (window.gc) window.gc();
+      });
+    } catch (e) {
+      console.warn('⚠️ Impossible de forcer le GC');
+    }
 
     console.log('📸 Capture d\'écran');
-    const screenshotBuffer = await page.screenshot();
+    const screenshotBuffer = await page.screenshot({
+      type: 'jpeg',  // JPEG au lieu de PNG pour réduire la mémoire utilisée
+      quality: 80,   // Qualité légèrement réduite pour économiser de la mémoire
+      fullPage: false
+    });
     
     console.log('🔒 Fermeture du navigateur');
     await browser.close();
 
     console.log('✅ Envoi de la capture d\'écran');
-    res.set('Content-Type', 'image/png');
+    res.set('Content-Type', 'image/jpeg');
     res.send(screenshotBuffer);
   } catch (err) {
     console.error('❌ Erreur dans la capture :', err);
+    
+    // Tenter de nettoyer en cas d'erreur
+    try {
+      // Forcer la fermeture de tous les processus chromium
+      execSync('pkill -f chromium');
+    } catch (e) {
+      console.warn('⚠️ Erreur lors du nettoyage:', e.message);
+    }
+    
     res.status(500).json({
       error: 'Erreur serveur',
-      message: err.message,
-      stack: err.stack
+      message: err.message
     });
   }
 });
@@ -132,12 +175,17 @@ app.get('/screenshot', async (req, res) => {
 app.listen(port, () => {
   console.log(`🚀 API listening on port ${port}`);
   
-  const executablePath = computeExecutablePath({
-    browser: 'chrome',
-    buildId: buildId,
-    cacheDir
-  });
-  
-  console.log(`📋 Chrome devrait être à: ${executablePath}`);
-  console.log(`🔍 Chrome existe: ${existsSync(executablePath)}`);
+  // Vérifier Chromium au démarrage
+  const chromiumPath = findChromiumPath();
+  if (chromiumPath) {
+    console.log(`✅ Chromium trouvé à: ${chromiumPath}`);
+    try {
+      const version = execSync(`${chromiumPath} --version`).toString().trim();
+      console.log(`📋 Version de Chromium: ${version}`);
+    } catch (e) {
+      console.error(`❌ Erreur lors de la vérification de la version: ${e.message}`);
+    }
+  } else {
+    console.error('❌ Chromium non trouvé!');
+  }
 });

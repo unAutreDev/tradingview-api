@@ -5,7 +5,6 @@
   "main": "api-server.js",
   "scripts": {
     "start": "node api-server.js",
-    "postinstall": "node install-chrome.js"
   },
   "dependencies": {
     "@puppeteer/browsers": "^2.10.4",
