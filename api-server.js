@@ -4,7 +4,7 @@ const puppeteer = require('puppeteer');
 const app = express();
 const port = process.env.PORT || 3000;
 
-const API_KEY = process.env.API_KEY || 'my-secret-token';
+const API_KEY = process.env.API_KEY;
 
 app.get('/screenshot', async (req, res) => {
   const clientKey = req.headers['x-api-key'];
