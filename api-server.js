@@ -1,5 +1,5 @@
 import express from 'express';
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer-core';
 import { computeExecutablePath } from '@puppeteer/browsers';
 
 const cacheDir = '/opt/render/.cache/puppeteer';
