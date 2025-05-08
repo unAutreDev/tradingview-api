@@ -1,5 +1,8 @@
-const express = require('express');
-const puppeteer = require('puppeteer');
+import express from 'express';
+import puppeteer from 'puppeteer';
+import { computeExecutablePath } from '@puppeteer/browsers';
+
+const cacheDir = '/opt/render/.cache/puppeteer';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -15,9 +18,20 @@ app.get('/screenshot', async (req, res) => {
   }
 
   try {
+
+    const executablePath = computeExecutablePath({
+      browser: 'chrome',
+      buildId: 'stable',
+      cacheDir
+    });
+   
     const browser = await puppeteer.launch({
-      headless: "new",
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      headless: 'new',
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+      ],
+      executablePath
     });
 
     const page = await browser.newPage();
