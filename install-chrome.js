@@ -9,8 +9,8 @@ const cacheDir = '/opt/render/.cache/puppeteer';
     mkdirSync(cacheDir, { recursive: true });
 
     await install({
-      browser: 'chromium',
-      buildId: '120.0.6099.71',
+      browser: 'chrome',
+      buildId: '136.0.7103.92',
       cacheDir
     });
 
