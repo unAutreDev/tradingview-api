@@ -3,6 +3,7 @@ import puppeteer from 'puppeteer';
 import { computeExecutablePath } from '@puppeteer/browsers';
 
 const cacheDir = '/opt/render/.cache/puppeteer';
+const buildId = '120.0.6099.71'
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -20,8 +21,8 @@ app.get('/screenshot', async (req, res) => {
   try {
 
     const executablePath = computeExecutablePath({
-      browser: 'chrome',
-      buildId: '118.0.5993.70',
+      browser: 'chromium',
+      buildId: buildId,
       cacheDir
     });
    
