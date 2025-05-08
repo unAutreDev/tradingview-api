@@ -3,7 +3,7 @@ import puppeteer from 'puppeteer';
 import { computeExecutablePath } from '@puppeteer/browsers';
 
 const cacheDir = '/opt/render/.cache/puppeteer';
-const buildId = '138.0.7156.3'
+const buildId = '120.0.6099.71'
 
 const app = express();
 const port = process.env.PORT || 3000;
