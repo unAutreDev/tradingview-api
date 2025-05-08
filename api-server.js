@@ -21,7 +21,7 @@ app.get('/screenshot', async (req, res) => {
 
     const executablePath = computeExecutablePath({
       browser: 'chrome',
-      buildId: 'stable',
+      buildId: '118.0.5993.70',
       cacheDir
     });
    
