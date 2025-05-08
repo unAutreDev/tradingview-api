@@ -21,3 +21,5 @@ Thumbs.db
 # Optional: test coverage, build artifacts, etc.
 coverage/
 dist/
+
+capture.*
