@@ -10,9 +10,17 @@ const API_KEY = process.env.API_KEY;
 
 // Fonction pour trouver le chemin de Chromium
 function findChromiumPath() {
+  // Vérifier d'abord la variable d'environnement PUPPETEER_EXECUTABLE_PATH
+  // qui sera définie dans le Dockerfile
+  if (process.env.PUPPETEER_EXECUTABLE_PATH && existsSync(process.env.PUPPETEER_EXECUTABLE_PATH)) {
+    return process.env.PUPPETEER_EXECUTABLE_PATH;
+  }
+  
+  // Dans le Dockerfile, nous avons défini l'emplacement de Chromium comme /usr/bin/chromium
+  // donc ajoutons-le en priorité à la liste des emplacements possibles
   const possiblePaths = [
-    '/usr/bin/chromium-browser',
     '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
     '/snap/bin/chromium',
     '/opt/chromium/chrome'
   ];
@@ -25,7 +33,7 @@ function findChromiumPath() {
   
   // Essayer de trouver avec which
   try {
-    return execSync('which chromium-browser || which chromium').toString().trim();
+    return execSync('which chromium || which chromium-browser').toString().trim();
   } catch (e) {
     console.error('Chromium non trouvé:', e.message);
     return null;
@@ -42,7 +50,8 @@ app.get('/check-browser', (req, res) => {
     
     const info = {
       path: chromiumPath,
-      exists: existsSync(chromiumPath)
+      exists: existsSync(chromiumPath),
+      puppeteerPath: process.env.PUPPETEER_EXECUTABLE_PATH || 'non défini'
     };
     
     try {

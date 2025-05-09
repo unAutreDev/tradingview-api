@@ -36,7 +36,10 @@ RUN apt-get update && apt-get install -y \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
-# Définir une variable d'environnement pour indiquer où se trouve l'exécutable Chromium
+# Créer des liens symboliques pour assurer la compatibilité avec différentes distributions
+RUN ln -sf /usr/bin/chromium /usr/bin/chromium-browser
+
+# Définir la variable d'environnement pour indiquer où se trouve l'exécutable Chromium
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
@@ -56,4 +59,4 @@ COPY . .
 EXPOSE 3000
 
 # Commande pour démarrer l'application
-CMD ["npm", "start"]
+CMD ["node", "api-server.js"]
