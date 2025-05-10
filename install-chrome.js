@@ -4,7 +4,7 @@ import { mkdirSync, accessSync, constants } from 'fs';
 import { exec } from 'child_process';
 import path from 'path';
 
-const cacheDir = '/opt/render/.cache/puppeteer';
+const cacheDir = '/opt/render/project/src/puppeteer';
 const buildId = '136.0.7103.92';
 
 (async () => {

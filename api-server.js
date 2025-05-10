@@ -4,7 +4,7 @@ import { computeExecutablePath } from '@puppeteer/browsers';
 import { existsSync } from 'fs';
 import { execSync } from 'child_process';
 
-const cacheDir = '/opt/render/.cache/puppeteer';
+const cacheDir = '/opt/render/project/src/puppeteer';
 const buildId = '136.0.7103.92';
 
 const app = express();
